@@ -1,0 +1,85 @@
+https://pimylifeup.com/raspberry-pi-torrentbox/
+
+
+1. Firstly let’s bring the Pi up to date to avoid any potential issues installing the torrent client.
+
+sudo apt-get update
+sudo apt-get upgrade
+
+2. Firstly, let’s download and install transmission by using the following command
+
+sudo apt-get install transmission-daemon
+
+3. If you plan on storing on an external drive for example a USB hard drive then we need to make directories for the torrents to stored. (NASHDD1 is the hard drive I mounted in the NAS tutorial)
+
+sudo mkdir -p /media/NASHDD1/torrent-inprogress
+sudo mkdir -p /media/NASHDD1/torrent-complete
+
+4. Now we will need to make a few changes to the transmission settings file, enter the following command:
+
+sudo nano /etc/transmission-daemon/settings.json
+
+5. I recommended making the following changes but there are other settings you may want to update depending on your preference. If you want information all the settings you can change then check out transmissions website.
+
+"incomplete-dir": "/media/NASHDD1/torrent-inprogress",
+"incomplete-dir-enabled": true,
+"download-dir": "/media/NASHDD1/torrent_complete",
+"rpc-password": "Your_Password",
+"rpc-username": "Your_Username",
+"rpc-whitelist": "192.168.*.*",
+
+6. Now reload transmission, if you restart your changes to the config file will be lost. You can reload the service by entering the following command.
+
+sudo service transmission-daemon reload
+
+7. If you didn’t change the location of the download directories you can skip to step 17, otherwise complete the next few steps.
+
+8. We will also need to update a few more places to make sure that transmission runs as the correct user, if we don’t we’ll run into lots of errors. First let’s stop the transmission service by entering the following command:
+
+sudo service transmission-daemon stop
+
+9. Now we need to edit the daemon so it launches as the user who owns the directory we wish to store in (To check who owns the folder use ls -l /your_directory/download_dir), first open the file by entering the following command.
+
+sudo nano /etc/init.d/transmission-daemon
+
+10. In here edit the user so it runs as the user who owns the directory we’re storing our downloads in. In my case it is pimylifeup instead of debian-transmission. We need do this because the folder we are going to store our torrents are likely to be owned by a different user to the default transmission.
+Pi Book Large
+
+To see who owns the directories use ls -l in the folder that contains the download folders. (Update pimylifeup with the relevant username)
+
+USER=pimylifeup
+
+11. We also need to chown some files since we are no longer using the debian-transmission user. If you don’t do this you errors and transmission will fail to launch. (Make sure you update pimylifeup with the username you’re using)
+
+sudo chown -R pimylifeup:pimylifeup /etc/transmission-daemon
+sudo chown -R pimylifeup:pimylifeup /etc/init.d/transmission-daemon
+sudo chown -R pimylifeup:pimylifeup /var/lib/transmission-daemon
+
+12. We also need to change the user in the following file. Failing to do will result in an error when go to relaunch the service.
+
+sudo nano /etc/systemd/system/multi-user.target.wants/transmission-daemon.service
+
+13. In here change the user to the relevant user, in my case it is pimylifeup.
+
+user=pimylifeup
+
+14. Now reload the systemctl file by entering the following:
+
+sudo systemctl daemon-reload
+
+15. Next we need to create the directory where the setting.json file will be accessed by the transmission-daemon.
+We then need to create a symbolic link (ln) back to the settings file we edited earlier, update pimylifeup with the relevant username. (If don’t don’t do this then transmission will create a default file in it’s place)
+
+sudo mkdir -p /home/pimylifeup/.config/transmission-daemon/
+sudo ln -s /etc/transmission-daemon/settings.json /home/pimylifeup/.config/transmission-daemon/
+sudo chown -R pimylifeup:pimylifeup /home/pimylifeup/.config/transmission-daemon/
+
+16. Let's start the transmission service back up by entering the following.
+
+sudo service transmission-daemon start
+
+17. Now you can check out your torrent box by opening it up in a web browser. If you haven't got your Pi's IP simply use the command hostname -I on the Pi.
+
+Enter the following URL to get to the interface. (Change the your_pi_ip with your Raspberry Pi’s IP)
+
+http://your_pi_ip:9091
